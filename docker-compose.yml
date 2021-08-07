@@ -1,0 +1,60 @@
+version: "3"
+services:
+  msql:
+    image: mysql
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: quiz
+  redis:
+    image: redis:latest
+    container_name: redis
+  nginx:
+    container_name: nginx
+    restart: always
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - 3050:80
+    depends_on:
+      - api
+      - client
+  api:
+    container_name: api
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes:
+      - ./server:/server
+      - /server/node_modules
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MQ_USER=root
+      - MQ_HOST=mysql
+      - MQ_DATABASE=quiz
+      - MQ_PASSWORD=password
+      - MQ_PORT=3306
+
+  client:
+    container_name: client
+    stdin_open: true
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+  worker:
+    container_name: worker
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - ./worker:/worker
+      - /worker/node_modules
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
